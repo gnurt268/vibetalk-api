@@ -30,12 +30,10 @@ public class CloudinaryService {
         Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(),
                 ObjectUtils.asMap(
                         "folder", "vibetalk/avatars",
-                        "transformation", ObjectUtils.asMap(
-                                "width", 300,
-                                "height", 300,
-                                "crop", "fill",
-                                "gravity", "face"
-                        )
+                        "width", 300,
+                        "height", 300,
+                        "crop", "fill",
+                        "gravity", "face"
                 ));
         return (String) uploadResult.get("secure_url");
     }
@@ -49,12 +47,10 @@ public class CloudinaryService {
                 "data:image/png;base64," + base64Image,
                 ObjectUtils.asMap(
                         "folder", "vibetalk/avatars",
-                        "transformation", ObjectUtils.asMap(
-                                "width", 300,
-                                "height", 300,
-                                "crop", "fill",
-                                "gravity", "face"
-                        )
+                        "width", 300,
+                        "height", 300,
+                        "crop", "fill",
+                        "gravity", "face"
                 ));
         return (String) uploadResult.get("secure_url");
     }
