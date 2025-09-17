@@ -1,0 +1,89 @@
+# VibeTalk API Configuration
+server:
+  port: 8080
+
+spring:
+  application:
+    name: vibetalk-api
+
+  # Database config
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+  datasource:
+    url: jdbc:mysql://localhost:3306/vibetalk_db
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  # File upload configuration
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 5MB
+      enabled: true
+
+  # Email configuration for Gmail SMTP
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
+    test-connection: false
+
+  # Enable async support for email sending
+  task:
+    execution:
+      pool:
+        core-size: 2
+        max-size: 5
+        queue-capacity: 100
+      thread-name-prefix: async-task-
+
+# JWT Configuration
+jwt:
+  secret: ${JWT_SECRET}
+
+# Cloudinary Configuration
+cloudinary:
+  cloud_name: ${CLOUDINARY_CLOUD_NAME}
+  api_key: ${CLOUDINARY_API_KEY}
+  api_secret: ${CLOUDINARY_API_SECRET}
+
+# App-specific configuration
+app:
+  name: VibeTalk
+  url: ${APP_URL:http://localhost:3030}
+
+# Swagger/OpenAPI Configuration
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+  info:
+    title: VibeTalk API
+    description: Real-time Chat Application API
+    version: 1.0.0
+    contact:
+      name: Development Team
+      email: support@vibetalk.com
+
+# Logging configuration
+logging:
+  level:
+    com.gnxrt.vibetalkapi: INFO
+    org.springframework.mail: DEBUG
+    org.springframework.security: DEBUG
