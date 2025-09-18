@@ -8,6 +8,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.context.event.EventListener;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
 import org.springframework.messaging.simp.stomp.StompHeaderAccessor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.messaging.SessionConnectedEvent;
 import org.springframework.web.socket.messaging.SessionDisconnectEvent;
@@ -29,17 +30,22 @@ public class WebSocketEventListener {
     @EventListener
     public void handleWebSocketConnectListener(SessionConnectedEvent event) {
         StompHeaderAccessor headerAccessor = StompHeaderAccessor.wrap(event.getMessage());
-        User user = (User) headerAccessor.getSessionAttributes().get("user");
+        if (headerAccessor.getUser() instanceof UsernamePasswordAuthenticationToken) {
+            UsernamePasswordAuthenticationToken auth =
+                    (UsernamePasswordAuthenticationToken) headerAccessor.getUser();
 
-        if (user != null) {
-            logger.info("User connected: {} with session: {}", user.getUsername(), headerAccessor.getSessionId());
+            User user = (User) auth.getPrincipal();
 
-            userPresenceService.markUserOnline(user, headerAccessor.getSessionId());
+            if (user != null) {
+                logger.info("User connected: {} with session: {}", user.getUsername(), headerAccessor.getSessionId());
 
-            UserPresenceUpdate presenceUpdate = new UserPresenceUpdate(
-                    user.getId(), user.getUsername(), "ONLINE", System.currentTimeMillis()
-            );
-            messagingTemplate.convertAndSend("/topic/presence", presenceUpdate);
+                userPresenceService.markUserOnline(user, headerAccessor.getSessionId());
+
+                UserPresenceUpdate presenceUpdate = new UserPresenceUpdate(
+                        user.getId(), user.getUsername(), "ONLINE", System.currentTimeMillis()
+                );
+                messagingTemplate.convertAndSend("/topic/presence", presenceUpdate);
+            }
         }
     }
 
