@@ -1,5 +1,7 @@
 package com.gnxrt.vibetalkapi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -20,6 +22,7 @@ import java.util.Set;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Chat {
 
     @Id
@@ -39,6 +42,7 @@ public class Chat {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by_id", nullable = false)
+    @JsonIgnoreProperties({"password", "chats", "sentMessages"})
     private User createdBy;
 
     @ManyToMany(fetch = FetchType.LAZY)
@@ -47,6 +51,7 @@ public class Chat {
             joinColumns = @JoinColumn(name = "chat_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
+    @JsonIgnoreProperties({"password", "chats", "sentMessages"})
     private Set<User> members = new HashSet<>();
 
     @ManyToMany(fetch = FetchType.LAZY)
@@ -55,9 +60,11 @@ public class Chat {
             joinColumns = @JoinColumn(name = "chat_id"),
             inverseJoinColumns = @JoinColumn(name = "user_id")
     )
+    @JsonIgnoreProperties({"password", "chats", "sentMessages"})
     private Set<User> admins = new HashSet<>();
 
     @OneToMany(mappedBy = "chat", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<Message> messages = new ArrayList<>();
 
     @CreationTimestamp

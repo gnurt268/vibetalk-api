@@ -65,7 +65,7 @@ public class ChatServiceImpl implements ChatService {
         }
 
         Chat newChat = new Chat();
-        newChat.setChatName(null);
+        newChat.setChatName(otherUser.getFullName());
         newChat.setGroupChat(false);
         newChat.setCreatedBy(currentUser);
 

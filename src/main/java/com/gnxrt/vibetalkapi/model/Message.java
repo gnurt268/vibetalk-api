@@ -1,5 +1,7 @@
 package com.gnxrt.vibetalkapi.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -16,6 +18,7 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
+@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
 public class Message {
 
     @Id
@@ -28,10 +31,12 @@ public class Message {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "sender_id", nullable = false)
+    @JsonIgnoreProperties({"password", "chats", "sentMessages"})
     private User sender;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "chat_id", nullable = false)
+    @JsonIgnoreProperties({"messages", "members", "admins"})
     private Chat chat;
 
     @CreationTimestamp
@@ -43,6 +48,7 @@ public class Message {
     private MessageType messageType = MessageType.TEXT;
 
     @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @JsonIgnore
     private List<MessageReadStatus> readStatuses = new ArrayList<>();
 
     public Message(String content, User sender, Chat chat) {

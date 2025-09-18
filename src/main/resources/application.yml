@@ -11,6 +11,16 @@ spring:
     hibernate:
       ddl-auto: update
     show-sql: true
+    open-in-view: false
+    properties:
+      hibernate:
+        enable_lazy_load_no_trans: true
+
+  jackson:
+    serialization:
+      fail-on-empty-beans: false
+    default-property-inclusion: non_null
+
   datasource:
     url: jdbc:mysql://localhost:3306/vibetalk_db
     username: ${DB_USERNAME}
