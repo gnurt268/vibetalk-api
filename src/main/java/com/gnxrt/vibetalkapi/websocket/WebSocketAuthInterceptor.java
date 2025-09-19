@@ -72,7 +72,7 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor, ChannelIn
                     if (user != null) {
 
                         UsernamePasswordAuthenticationToken authentication =
-                                new UsernamePasswordAuthenticationToken(user, null, null);
+                                new UsernamePasswordAuthenticationToken(user.getId().toString(), null, null);
                         accessor.setUser(authentication);
 
                         accessor.getSessionAttributes().put("user", user);
