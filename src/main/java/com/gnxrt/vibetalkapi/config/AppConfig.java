@@ -36,15 +36,15 @@ public class AppConfig {
                 )
                 .authorizeHttpRequests(authorize ->
                         authorize
-                                // Public endpoints - no authentication required
                                 .requestMatchers(
                                         "/auth/login",
                                         "/auth/register",
                                         "/auth/password/forgot",
                                         "/auth/password/reset",
                                         "/auth/password/validate-token",
-                                        "/auth/password/validate-token/**"
-                                ).not().authenticated()
+                                        "/auth/password/validate-token/**",
+                                        "/api/test/rate-limit"
+                                ).permitAll()
 
                                 // Authenticated endpoints
                                 .requestMatchers(
@@ -97,18 +97,22 @@ public class AppConfig {
     public AuthenticationEntryPoint customAuthenticationEntryPoint() {
         return (request, response, authException) -> {
             response.setContentType("application/json");
-            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
 
-            String message = "You are already logged in";
-            if (request.getRequestURI().contains("/login")) {
-                message = "Already logged in. Please logout first to login with different account.";
-            } else if (request.getRequestURI().contains("/register")) {
-                message = "Already logged in. Please logout first to register new account.";
+            String message = "Authentication required";
+            String error = "UNAUTHORIZED";
+
+            if (request.getRequestURI().startsWith("/api/")) {
+                message = "Please provide a valid authentication token to access this resource";
+            } else if (request.getRequestURI().contains("/auth/logout")) {
+                message = "You must be logged in to logout";
+            } else if (request.getRequestURI().contains("/auth/status")) {
+                message = "Authentication token required to check status";
             }
 
             response.getWriter().write(String.format(
                     "{\"error\":\"%s\",\"message\":\"%s\",\"timestamp\":\"%s\"}",
-                    "ACCESS_DENIED", message, LocalDateTime.now()
+                    error, message, LocalDateTime.now()
             ));
         };
     }
