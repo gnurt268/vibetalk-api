@@ -15,6 +15,8 @@ import com.gnxrt.vibetalkapi.service.ChatService;
 import com.gnxrt.vibetalkapi.service.MessageService;
 import com.gnxrt.vibetalkapi.service.RealtimeIntegrationService;
 import com.gnxrt.vibetalkapi.service.UserService;
+import com.gnxrt.vibetalkapi.service.CacheService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -25,6 +27,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
+@Slf4j
 @Service
 @Transactional
 public class MessageServiceImpl implements MessageService {
@@ -35,19 +38,22 @@ public class MessageServiceImpl implements MessageService {
     private final ChatService chatService;
     private final RealtimeIntegrationService realtimeService;
     private final ChatRepository chatRepository;
+    private final CacheService cacheService;
 
     public MessageServiceImpl(MessageRepository messageRepository,
                               MessageReadStatusRepository messageReadStatusRepository,
                               UserService userService,
                               ChatService chatService,
                               RealtimeIntegrationService realtimeService,
-                              ChatRepository chatRepository) {
+                              ChatRepository chatRepository,
+                              CacheService cacheService) {
         this.messageRepository = messageRepository;
         this.messageReadStatusRepository = messageReadStatusRepository;
         this.userService = userService;
         this.chatService = chatService;
         this.realtimeService = realtimeService;
         this.chatRepository = chatRepository;
+        this.cacheService = cacheService;
     }
 
     @Override
@@ -74,6 +80,12 @@ public class MessageServiceImpl implements MessageService {
         chat.setUpdatedAt(LocalDateTime.now());
         chatRepository.save(chat);
 
+        cacheService.clearChatMessagesCache(chatId);
+        chat.getMembers().forEach(member ->
+                cacheService.clearUserChatsCache(member.getId())
+        );
+        cacheService.setUserTyping(chatId, sender.getId(), false);
+
         if (realtimeService != null) {
             realtimeService.broadcastNewMessage(savedMessage);
         }
@@ -88,8 +100,19 @@ public class MessageServiceImpl implements MessageService {
             throw new ChatException("You don't have access to this chat");
         }
 
+        @SuppressWarnings("unchecked")
+        List<Message> cachedMessages = (List<Message>) cacheService.getCachedChatMessages(chatId);
+        if (cachedMessages != null) {
+            log.debug("Retrieved messages from cache for chat {}", chatId);
+            return cachedMessages;
+        }
+
         Chat chat = chatService.findChatById(chatId);
-        return messageRepository.findByChatOrderByCreatedAtAsc(chat);
+        List<Message> messages = messageRepository.findByChatOrderByCreatedAtAsc(chat);
+
+        cacheService.cacheChatMessages(chatId, messages);
+
+        return messages;
     }
 
     @Override
@@ -102,7 +125,13 @@ public class MessageServiceImpl implements MessageService {
         Chat chat = chatService.findChatById(chatId);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-        return messageRepository.findByChat(chat, pageable).getContent();
+        List<Message> messages = messageRepository.findByChat(chat, pageable).getContent();
+
+        if (page == 0) {
+            cacheService.cacheChatMessages(chatId, messages);
+        }
+
+        return messages;
     }
 
     @Override
@@ -137,6 +166,8 @@ public class MessageServiceImpl implements MessageService {
         message.setContent(newContent.trim());
         Message updatedMessage = messageRepository.save(message);
 
+        cacheService.clearChatMessagesCache(message.getChat().getId());
+
         if (realtimeService != null) {
             realtimeService.broadcastMessageEdit(updatedMessage);
         }
@@ -160,6 +191,11 @@ public class MessageServiceImpl implements MessageService {
         if (realtimeService != null) {
             realtimeService.broadcastMessageDelete(messageId, chat, deletedBy);
         }
+
+        cacheService.clearChatMessagesCache(chat.getId());
+        message.getChat().getMembers().forEach(member ->
+                cacheService.clearUserChatsCache(member.getId())
+        );
     }
 
     @Override
@@ -169,6 +205,10 @@ public class MessageServiceImpl implements MessageService {
         message.setContent("[Message deleted]");
         message.setMessageType(MessageType.SYSTEM);
         messageRepository.save(message);
+
+        User currentUser = userService.findUserProfile(jwt);
+
+        log.info("Message {} deleted for user {}", messageId, currentUser.getId());
     }
 
     @Override

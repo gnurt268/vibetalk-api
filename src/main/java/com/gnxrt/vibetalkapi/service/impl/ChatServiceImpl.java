@@ -14,6 +14,8 @@ import com.gnxrt.vibetalkapi.service.ChatService;
 import com.gnxrt.vibetalkapi.service.NotificationService;
 import com.gnxrt.vibetalkapi.service.RealtimeIntegrationService;
 import com.gnxrt.vibetalkapi.service.UserService;
+import com.gnxrt.vibetalkapi.service.CacheService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,6 +26,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @Transactional
 public class ChatServiceImpl implements ChatService {
@@ -34,20 +37,22 @@ public class ChatServiceImpl implements ChatService {
     private final MessageReadStatusRepository messageReadStatusRepository;
     private final RealtimeIntegrationService realtimeService;
     private final NotificationService notificationService;
-
+    private final CacheService cacheService;
 
     public ChatServiceImpl(ChatRepository chatRepository,
                            UserService userService,
                            MessageRepository messageRepository,
                            MessageReadStatusRepository messageReadStatusRepository,
                            RealtimeIntegrationService realtimeService,
-                           NotificationService notificationService) {
+                           NotificationService notificationService,
+                           CacheService cacheService) {
         this.chatRepository = chatRepository;
         this.userService = userService;
         this.messageRepository = messageRepository;
         this.messageReadStatusRepository = messageReadStatusRepository;
         this.realtimeService = realtimeService;
         this.notificationService = notificationService;
+        this.cacheService = cacheService;
     }
 
     @Override
@@ -74,7 +79,12 @@ public class ChatServiceImpl implements ChatService {
         members.add(otherUser);
         newChat.setMembers(members);
 
-        return chatRepository.save(newChat);
+        Chat savedChat = chatRepository.save(newChat);
+
+        cacheService.clearUserChatsCache(currentUser.getId());
+        cacheService.clearUserChatsCache(otherUserId);
+
+        return savedChat;
     }
 
     @Override
@@ -115,6 +125,8 @@ public class ChatServiceImpl implements ChatService {
 
         realtimeService.broadcastChatCreated(savedChat, currentUser);
 
+        members.forEach(member -> cacheService.clearUserChatsCache(member.getId()));
+
         return savedChat;
     }
 
@@ -141,7 +153,19 @@ public class ChatServiceImpl implements ChatService {
     @Transactional(readOnly = true)
     public List<Chat> getUserChats(String jwt) throws UserException {
         User user = userService.findUserProfile(jwt);
-        return chatRepository.findChatsByUser(user);
+
+        @SuppressWarnings("unchecked")
+        List<Chat> cachedChats = (List<Chat>) cacheService.getCachedUserChats(user.getId());
+        if (cachedChats != null) {
+            log.debug("Retrieved user chats from cache for user {}", user.getId());
+            return cachedChats;
+        }
+
+        List<Chat> chats = chatRepository.findChatsByUser(user);
+
+        cacheService.cacheUserChats(user.getId(), chats);
+
+        return chats;
     }
 
     @Override
@@ -224,6 +248,8 @@ public class ChatServiceImpl implements ChatService {
         realtimeService.broadcastUserAddedToChat(updatedChat, userToAdd, currentUser);
         notificationService.notifyAddedToGroup(userToAdd, currentUser, updatedChat);
 
+        chat.getMembers().forEach(member -> cacheService.clearUserChatsCache(member.getId()));
+
         return updatedChat;
     }
 
@@ -274,6 +300,9 @@ public class ChatServiceImpl implements ChatService {
             realtimeService.broadcastUserRemovedFromChat(updatedChat, userToRemove, currentUser);
             notificationService.notifyRemovedFromGroup(userToRemove, updatedChat);
         }
+
+        chat.getMembers().forEach(member -> cacheService.clearUserChatsCache(member.getId()));
+        cacheService.clearUserChatsCache(userId);
 
         return updatedChat;
     }
@@ -362,6 +391,8 @@ public class ChatServiceImpl implements ChatService {
 
         realtimeService.broadcastChatRenamed(updatedChat, currentUser, oldName);
 
+        chat.getMembers().forEach(member -> cacheService.clearUserChatsCache(member.getId()));
+
         return updatedChat;
     }
 
@@ -379,7 +410,11 @@ public class ChatServiceImpl implements ChatService {
         }
 
         chat.setChatImage(imageUrl);
-        return chatRepository.save(chat);
+        Chat updatedChat = chatRepository.save(chat);
+
+        chat.getMembers().forEach(member -> cacheService.clearUserChatsCache(member.getId()));
+
+        return updatedChat;
     }
 
     @Override
@@ -455,6 +490,9 @@ public class ChatServiceImpl implements ChatService {
                 chatRepository.save(chat);
             }
         }
+
+        chat.getMembers().forEach(member -> cacheService.clearUserChatsCache(member.getId()));
+        cacheService.clearChatMessagesCache(chatId);
     }
 
     @Override

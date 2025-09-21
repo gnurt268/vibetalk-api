@@ -43,7 +43,8 @@ public class AppConfig {
                                         "/auth/password/reset",
                                         "/auth/password/validate-token",
                                         "/auth/password/validate-token/**",
-                                        "/api/test/rate-limit"
+                                        "/api/test/rate-limit",
+                                        "/api/redis/**"
                                 ).permitAll()
 
                                 // Authenticated endpoints

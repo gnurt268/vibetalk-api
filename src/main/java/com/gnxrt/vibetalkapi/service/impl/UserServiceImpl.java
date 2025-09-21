@@ -9,6 +9,8 @@ import com.gnxrt.vibetalkapi.dto.request.ChangePasswordRequest;
 import com.gnxrt.vibetalkapi.service.UserService;
 import com.gnxrt.vibetalkapi.service.CloudinaryService;
 import com.gnxrt.vibetalkapi.service.EmailService;
+import com.gnxrt.vibetalkapi.service.CacheService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,7 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
 
+@Slf4j
 @Service
 public class UserServiceImpl implements UserService {
 
@@ -26,24 +29,36 @@ public class UserServiceImpl implements UserService {
     private final PasswordEncoder passwordEncoder;
     private final CloudinaryService cloudinaryService;
     private final EmailService emailService;
+    private final CacheService cacheService;
 
     public UserServiceImpl(UserRepository userRepository,
                            TokenProvider tokenProvider,
                            PasswordEncoder passwordEncoder,
                            CloudinaryService cloudinaryService,
-                           EmailService emailService) {
+                           EmailService emailService,
+                           CacheService cacheService) {
         this.userRepository = userRepository;
         this.tokenProvider = tokenProvider;
         this.passwordEncoder = passwordEncoder;
         this.cloudinaryService = cloudinaryService;
         this.emailService = emailService;
+        this.cacheService = cacheService;
     }
 
     @Override
     public User findUserById(Integer id) throws UserException {
+
+        User cachedUser = (User) cacheService.getCachedUserProfile(id);
+        if (cachedUser != null) {
+            log.debug("Retrieved user from cache for userId: {}", id);
+            return cachedUser;
+        }
+
         Optional<User> user = userRepository.findById(id);
         if (user.isPresent()) {
-            return user.get();
+            User foundUser = user.get();
+            cacheService.cacheUserProfile(id, foundUser);
+            return foundUser;
         }
         throw new UserException("User not found with id: " + id);
     }
@@ -59,6 +74,9 @@ public class UserServiceImpl implements UserService {
         if (user == null) {
             throw new UserException("User not found with email: " + email);
         }
+
+        cacheService.cacheUserProfile(user.getId(), user);
+
         return user;
     }
 
@@ -84,7 +102,12 @@ public class UserServiceImpl implements UserService {
             user.setUrlAvatar(req.getUrlAvatar());
         }
 
-        return userRepository.save(user);
+        User updatedUser = userRepository.save(user);
+
+        cacheService.cacheUserProfile(userId, updatedUser);
+        cacheService.clearUserChatsCache(userId);
+
+        return updatedUser;
     }
 
     @Override
@@ -108,6 +131,8 @@ public class UserServiceImpl implements UserService {
             System.err.println("Failed to send password change confirmation email: " + e.getMessage());
         }
 
+        cacheService.cacheUserProfile(userId, updatedUser);
+
         return updatedUser;
     }
 
@@ -123,6 +148,10 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public List<User> searchUser(String query) {
-        return userRepository.searchUser(query);
+        List<User> users = userRepository.searchUser(query);
+
+        users.forEach(user -> cacheService.cacheUserProfile(user.getId(), user));
+
+        return users;
     }
 }
