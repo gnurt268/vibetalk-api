@@ -22,7 +22,7 @@ spring:
     default-property-inclusion: non_null
 
   datasource:
-    url: jdbc:mysql://localhost:3306/vibetalk_db
+    url: jdbc:mysql://${DB_HOST:localhost}:3306/vibetalk_db
     username: ${DB_USERNAME}
     password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -63,23 +63,24 @@ spring:
 
   data:
     redis:
-      host: localhost
-      port: 6379
-      password: ${REDIS_PASSWORD:}
-      timeout: 2000ms
-      database: 0
+      host: ${SPRING_DATA_REDIS_HOST:localhost}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+      password: ${SPRING_DATA_REDIS_PASSWORD:}
+      timeout: 5000ms
+      connect-timeout: 3000ms
       lettuce:
+        shutdown-timeout: 200ms
         pool:
           max-active: 8
           max-idle: 8
           min-idle: 0
-          max-wait: -1ms
+          max-wait: 1000ms
 
-    cache:
-      type: redis
-      redis:
-        time-to-live: 600000
-        cache-null-values: false
+  cache:
+    type: ${SPRING_CACHE_TYPE:redis}
+    redis:
+      time-to-live: 600000
+      cache-null-values: false
 
 # JWT Configuration
 jwt:
