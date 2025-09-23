@@ -2,6 +2,7 @@ package com.gnxrt.vibetalkapi.model;
 
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotBlank;
 import lombok.AllArgsConstructor;
@@ -18,7 +19,9 @@ import java.util.List;
 @AllArgsConstructor
 @NoArgsConstructor
 @Data
-@JsonIgnoreProperties({"hibernateLazyInitializer", "handler"})
+@JsonIgnoreProperties(value = {"hibernateLazyInitializer", "handler", "readCount"},
+        allowGetters = true,
+        ignoreUnknown = true)
 public class Message {
 
     @Id
@@ -70,6 +73,7 @@ public class Message {
                 .orElse(null);
     }
 
+    @JsonProperty("readCount")
     public int getReadCount() {
         return readStatuses.size();
     }

@@ -76,7 +76,11 @@ public class AppConfig {
 
                 cfg.setAllowedOrigins(Arrays.asList(
                         "http://localhost:3030",
-                        "http://localhost:3000"
+                        "http://localhost:3000",
+                        "https://vibetalk-web.vercel.app",
+                        "https://*.vercel.app",
+                        "https://trimorphous-cyrus-pteridological.ngrok-free.dev",
+                        "https://*.ngrok-free.dev"
                 ));
                 cfg.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
                 cfg.setAllowCredentials(true);
