@@ -1,6 +1,7 @@
 package com.gnxrt.vibetalkapi.controller;
 
 import com.gnxrt.vibetalkapi.config.TokenProvider;
+import com.gnxrt.vibetalkapi.dto.request.RegisterRequest;
 import com.gnxrt.vibetalkapi.exception.UserException;
 import com.gnxrt.vibetalkapi.model.User;
 import com.gnxrt.vibetalkapi.repository.UserRepository;
@@ -44,7 +45,7 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<AuthResponse> createUserHandler(
-            @Valid @RequestBody User user,
+            @Valid @RequestBody RegisterRequest user,
             HttpServletRequest request) throws UserException {
 
         String email = user.getEmail();
