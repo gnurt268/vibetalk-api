@@ -86,6 +86,7 @@ public class WebSocketMessageController {
                     message.getContent(),
                     sender.getId(),
                     sender.getUsername(),
+                    sender.getFullName(),
                     sender.getUrlAvatar(),
                     message.getChat().getId(),
                     message.getMessageType(),

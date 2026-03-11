@@ -15,6 +15,7 @@ public class RealtimeMessageDTO {
     private String content;
     private Integer senderId;
     private String senderUsername;
+    private String senderFullName;
     private String senderAvatar;
     private Integer chatId;
     private MessageType messageType;

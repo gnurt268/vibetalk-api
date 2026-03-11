@@ -1,16 +1,13 @@
-# VibeTalk API Configuration
-server:
-  port: 8080
-
+# VibeTalk API - Common Configuration
 spring:
   application:
     name: vibetalk-api
 
-  # Database config
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  # JPA common config
   jpa:
-    hibernate:
-      ddl-auto: update
-    show-sql: true
     open-in-view: false
     properties:
       hibernate:
@@ -22,24 +19,19 @@ spring:
     default-property-inclusion: non_null
 
   datasource:
-    url: jdbc:mysql://${DB_HOST:localhost}:3306/vibetalk_db
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
 
-  # File upload configuration
+  # File upload
   servlet:
     multipart:
       max-file-size: 5MB
       max-request-size: 5MB
       enabled: true
 
-  # Email configuration for Gmail SMTP
+  # Email (Gmail SMTP)
   mail:
     host: smtp.gmail.com
     port: 587
-    username: ${MAIL_USERNAME}
-    password: ${MAIL_PASSWORD}
     properties:
       mail:
         smtp:
@@ -52,7 +44,7 @@ spring:
           writetimeout: 5000
     test-connection: false
 
-  # Enable async support for email sending
+  # Async
   task:
     execution:
       pool:
@@ -61,43 +53,11 @@ spring:
         queue-capacity: 100
       thread-name-prefix: async-task-
 
-  data:
-    redis:
-      host: ${SPRING_DATA_REDIS_HOST:localhost}
-      port: ${SPRING_DATA_REDIS_PORT:6379}
-      password: ${SPRING_DATA_REDIS_PASSWORD:}
-      timeout: 5000ms
-      connect-timeout: 3000ms
-      lettuce:
-        shutdown-timeout: 200ms
-        pool:
-          max-active: 8
-          max-idle: 8
-          min-idle: 0
-          max-wait: 1000ms
-
-  cache:
-    type: ${SPRING_CACHE_TYPE:redis}
-    redis:
-      time-to-live: 600000
-      cache-null-values: false
-
-# JWT Configuration
-jwt:
-  secret: ${JWT_SECRET}
-
-# Cloudinary Configuration
-cloudinary:
-  cloud_name: ${CLOUDINARY_CLOUD_NAME}
-  api_key: ${CLOUDINARY_API_KEY}
-  api_secret: ${CLOUDINARY_API_SECRET}
-
-# App-specific configuration
+# App info
 app:
   name: VibeTalk
-  url: ${APP_URL:http://localhost:3030}
 
-# Swagger/OpenAPI Configuration
+# Swagger/OpenAPI
 springdoc:
   api-docs:
     path: /api-docs
@@ -111,10 +71,3 @@ springdoc:
     contact:
       name: Development Team
       email: support@vibetalk.com
-
-# Logging configuration
-logging:
-  level:
-    com.gnxrt.vibetalkapi: INFO
-    org.springframework.mail: DEBUG
-    org.springframework.security: DEBUG

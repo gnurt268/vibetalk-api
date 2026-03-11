@@ -82,7 +82,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User updateUser(Integer userId, UpdateUserRequest req) throws UserException {
-        User user = findUserById(userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserException("User not found with id: " + userId));
 
         if (req.getFullName() != null && !req.getFullName().trim().isEmpty()) {
             user.setFullName(req.getFullName().trim());
@@ -112,7 +113,8 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public User changePassword(Integer userId, ChangePasswordRequest req) throws UserException {
-        User user = findUserById(userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new UserException("User not found with id: " + userId));
 
         if (!passwordEncoder.matches(req.getCurrentPassword(), user.getPassword())) {
             throw new UserException("Current password is incorrect");
@@ -140,7 +142,6 @@ public class UserServiceImpl implements UserService {
     public String uploadAvatar(MultipartFile file) throws IOException {
         return cloudinaryService.uploadImage(file);
     }
-
     @Override
     public String uploadAvatarBase64(String base64Image) throws IOException {
         return cloudinaryService.uploadImageFromBase64(base64Image);

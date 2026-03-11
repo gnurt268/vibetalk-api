@@ -25,6 +25,7 @@ public class RealtimeIntegrationService {
                 message.getContent(),
                 sender.getId(),
                 sender.getUsername(),
+                sender.getFullName(),
                 sender.getUrlAvatar(),
                 chat.getId(),
                 message.getMessageType(),
