@@ -133,7 +133,7 @@ public class ChatServiceImpl implements ChatService {
     @Override
     @Transactional(readOnly = true)
     public Chat findChatById(Integer chatId) throws ChatException {
-        Optional<Chat> chat = chatRepository.findById(chatId);
+        Optional<Chat> chat = chatRepository.findByIdWithMembers(chatId);
         if (chat.isPresent()) {
             return chat.get();
         }
