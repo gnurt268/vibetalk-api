@@ -1,5 +1,6 @@
 package com.gnxrt.vibetalkapi.service.impl;
 
+import com.gnxrt.vibetalkapi.dto.websocket.ChatSummaryDTO;
 import com.gnxrt.vibetalkapi.exception.ChatException;
 import com.gnxrt.vibetalkapi.exception.UserException;
 import com.gnxrt.vibetalkapi.model.Chat;
@@ -533,6 +534,22 @@ public class ChatServiceImpl implements ChatService {
 
     @Override
     @Transactional(readOnly = true)
+    public java.util.Map<Integer, Integer> getAllUnreadCounts(String jwt) throws UserException {
+        User user = userService.findUserProfile(jwt);
+        List<Chat> chats = chatRepository.findChatsByUser(user);
+
+        java.util.Map<Integer, Integer> unreadCounts = new java.util.HashMap<>();
+        for (Chat chat : chats) {
+            int count = messageRepository.countUnreadMessagesByUserInChat(chat, user);
+            if (count > 0) {
+                unreadCounts.put(chat.getId(), count);
+            }
+        }
+        return unreadCounts;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public List<Chat> searchChats(String query, String jwt) throws UserException {
         User user = userService.findUserProfile(jwt);
         List<Chat> userChats = chatRepository.findChatsByUser(user);
@@ -540,6 +557,23 @@ public class ChatServiceImpl implements ChatService {
         return userChats.stream()
                 .filter(chat -> chat.getChatName().toLowerCase().contains(query.toLowerCase()))
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public java.util.List<ChatSummaryDTO> getUserChatSummaries(String jwt) throws UserException {
+        User user = userService.findUserProfile(jwt);
+        List<Chat> chats = chatRepository.findChatsByUser(user);
+
+        return chats.stream().map(chat -> {
+            Message lastMessage = messageRepository.findTopByChatOrderByCreatedAtDesc(chat);
+            int unreadCount = messageRepository.countUnreadMessagesByUserInChat(chat, user);
+            return new ChatSummaryDTO(
+                    chat,
+                    ChatSummaryDTO.fromMessage(lastMessage),
+                    unreadCount
+            );
+        }).collect(Collectors.toList());
     }
 
 }

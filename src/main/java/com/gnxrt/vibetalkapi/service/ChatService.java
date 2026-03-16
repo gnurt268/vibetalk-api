@@ -1,5 +1,6 @@
 package com.gnxrt.vibetalkapi.service;
 
+import com.gnxrt.vibetalkapi.dto.websocket.ChatSummaryDTO;
 import com.gnxrt.vibetalkapi.exception.ChatException;
 import com.gnxrt.vibetalkapi.exception.UserException;
 import com.gnxrt.vibetalkapi.model.Chat;
@@ -52,6 +53,10 @@ public interface ChatService {
     public void markChatAsRead(Integer chatId, String jwt) throws UserException, ChatException;
 
     public int getUnreadMessageCount(Integer chatId, String jwt) throws UserException, ChatException;
+
+    public java.util.Map<Integer, Integer> getAllUnreadCounts(String jwt) throws UserException;
+
+    public java.util.List<ChatSummaryDTO> getUserChatSummaries(String jwt) throws UserException;
 
     public List<Chat> searchChats(String query, String jwt) throws UserException;
 

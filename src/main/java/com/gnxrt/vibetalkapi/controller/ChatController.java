@@ -1,5 +1,6 @@
 package com.gnxrt.vibetalkapi.controller;
 
+import com.gnxrt.vibetalkapi.dto.websocket.ChatSummaryDTO;
 import com.gnxrt.vibetalkapi.exception.ChatException;
 import com.gnxrt.vibetalkapi.exception.UserException;
 import com.gnxrt.vibetalkapi.model.Chat;
@@ -64,6 +65,14 @@ public class ChatController {
 
         List<Chat> chats = chatService.getUserChats(jwt);
         return new ResponseEntity<>(chats, HttpStatus.OK);
+    }
+
+    @GetMapping("/summaries")
+    public ResponseEntity<List<ChatSummaryDTO>> getUserChatSummaries(
+            @RequestHeader(JWT_HEADER) String jwt) throws UserException {
+
+        var summaries = chatService.getUserChatSummaries(jwt);
+        return new ResponseEntity<>(summaries, HttpStatus.OK);
     }
 
     @GetMapping("/groups")
@@ -214,6 +223,14 @@ public class ChatController {
 
         ApiResponse response = new ApiResponse("Chat marked as read", true);
         return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    @GetMapping("/unread-counts")
+    public ResponseEntity<java.util.Map<Integer, Integer>> getAllUnreadCounts(
+            @RequestHeader(JWT_HEADER) String jwt) throws UserException {
+
+        java.util.Map<Integer, Integer> unreadCounts = chatService.getAllUnreadCounts(jwt);
+        return new ResponseEntity<>(unreadCounts, HttpStatus.OK);
     }
 
     @GetMapping("/{chatId}/unread-count")

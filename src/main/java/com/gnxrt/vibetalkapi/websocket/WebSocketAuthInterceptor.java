@@ -61,6 +61,7 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor, ChannelIn
 
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
 
+            // Cách 1: Lấy từ Authorization header
             String token = accessor.getFirstNativeHeader("Authorization");
             if (token != null && token.startsWith("Bearer ")) {
                 token = token.substring(7);
@@ -74,10 +75,26 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor, ChannelIn
                         UsernamePasswordAuthenticationToken authentication =
                                 new UsernamePasswordAuthenticationToken(user.getId().toString(), null, null);
                         accessor.setUser(authentication);
-
                         accessor.getSessionAttributes().put("user", user);
+                        System.out.println("[WS-AUTH] Set principal via Auth header: userId=" + user.getId() + " (" + user.getUsername() + ")");
+                        return message;
                     }
                 }
+            }
+
+            // Cách 2: Fallback từ session attributes (set bởi beforeHandshake qua query param)
+            if (accessor.getUser() == null && accessor.getSessionAttributes() != null) {
+                User user = (User) accessor.getSessionAttributes().get("user");
+                if (user != null) {
+                    UsernamePasswordAuthenticationToken authentication =
+                            new UsernamePasswordAuthenticationToken(user.getId().toString(), null, null);
+                    accessor.setUser(authentication);
+                    System.out.println("[WS-AUTH] Set principal via session fallback: userId=" + user.getId() + " (" + user.getUsername() + ")");
+                } else {
+                    System.out.println("[WS-AUTH] WARNING: No user in session attributes!");
+                }
+            } else if (accessor.getUser() == null) {
+                System.out.println("[WS-AUTH] WARNING: No session attributes available!");
             }
         }
 

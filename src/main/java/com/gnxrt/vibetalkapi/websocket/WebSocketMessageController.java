@@ -96,12 +96,11 @@ public class WebSocketMessageController {
 
             Chat chat = message.getChat();
 
-            messagingTemplate.convertAndSend("/topic/chat/" + chat.getId(), realtimeMessage);
-
+            System.out.println("[WS-DEBUG] Chat members count: " + (chat.getMembers() != null ? chat.getMembers().size() : "null"));
             for (User member : chat.getMembers()) {
-                messagingTemplate.convertAndSendToUser(
-                        member.getId().toString(),
-                        "/queue/messages",
+                System.out.println("[WS-DEBUG] Sending to user topic: userId=" + member.getId() + " (" + member.getUsername() + ")");
+                messagingTemplate.convertAndSend(
+                        "/topic/user/" + member.getId() + "/messages",
                         realtimeMessage
                 );
             }
@@ -118,11 +117,12 @@ public class WebSocketMessageController {
         } catch (Exception e) {
             System.err.println("Error in sendMessage: " + e.getMessage());
             e.printStackTrace();
-            messagingTemplate.convertAndSendToUser(
-                    principal.getName(),
-                    "/queue/errors",
-                    new ErrorMessageDTO("Failed to send message: " + e.getMessage(), LocalDateTime.now())
-            );
+            if (principal != null) {
+                messagingTemplate.convertAndSend(
+                        "/topic/user/" + principal.getName() + "/errors",
+                        new ErrorMessageDTO("Failed to send message: " + e.getMessage(), LocalDateTime.now())
+                );
+            }
         }
     }
 
@@ -142,9 +142,8 @@ public class WebSocketMessageController {
                     LocalDateTime.now()
             );
 
-            messagingTemplate.convertAndSendToUser(
-                    message.getSender().getId().toString(),
-                    "/queue/read-receipts",
+            messagingTemplate.convertAndSend(
+                    "/topic/user/" + message.getSender().getId() + "/read-receipts",
                     receipt
             );
 
@@ -170,9 +169,8 @@ public class WebSocketMessageController {
 
             for (User member : chat.getMembers()) {
                 if (!member.getId().equals(user.getId())) {
-                    messagingTemplate.convertAndSendToUser(
-                            member.getId().toString(),
-                            "/queue/typing",
+                    messagingTemplate.convertAndSend(
+                            "/topic/user/" + member.getId() + "/typing",
                             indicator
                     );
                 }
@@ -199,9 +197,8 @@ public class WebSocketMessageController {
 
             for (User member : chat.getMembers()) {
                 if (!member.getId().equals(user.getId())) {
-                    messagingTemplate.convertAndSendToUser(
-                            member.getId().toString(),
-                            "/queue/typing",
+                    messagingTemplate.convertAndSend(
+                            "/topic/user/" + member.getId() + "/typing",
                             indicator
                     );
                 }
