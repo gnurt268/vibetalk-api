@@ -49,14 +49,9 @@ public class MessageController {
             @RequestHeader(JWT_HEADER) String jwt,
             @PathVariable Integer chatId,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "50") int size) throws UserException, ChatException {
+            @RequestParam(defaultValue = "30") int size) throws UserException, ChatException {
 
-        List<Message> messages;
-        if (page == 0 && size == 50) {
-            messages = messageService.getChatMessages(chatId, jwt);
-        } else {
-            messages = messageService.getChatMessages(chatId, page, size, jwt);
-        }
+        List<Message> messages = messageService.getChatMessages(chatId, page, size, jwt);
 
         return new ResponseEntity<>(messages, HttpStatus.OK);
     }

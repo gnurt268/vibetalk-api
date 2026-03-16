@@ -125,7 +125,8 @@ public class MessageServiceImpl implements MessageService {
         Chat chat = chatService.findChatById(chatId);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
-        List<Message> messages = messageRepository.findByChat(chat, pageable).getContent();
+        List<Message> messages = new java.util.ArrayList<>(messageRepository.findByChat(chat, pageable).getContent());
+        java.util.Collections.reverse(messages);
 
         if (page == 0) {
             cacheService.cacheChatMessages(chatId, messages);
