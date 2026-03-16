@@ -22,4 +22,10 @@ public class RealtimeMessageDTO {
     private LocalDateTime timestamp;
     private String status;
     private String clientMessageId;
+
+    // Reply info
+    private Integer replyToId;
+    private String replyToContent;
+    private String replyToSenderName;
+    private String replyToMessageType;
 }

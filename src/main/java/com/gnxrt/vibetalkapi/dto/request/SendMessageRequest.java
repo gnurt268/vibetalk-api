@@ -21,4 +21,6 @@ public class SendMessageRequest {
     private MessageType messageType = MessageType.TEXT;
 
     private String clientMessageId;
+
+    private Integer replyToId;
 }

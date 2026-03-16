@@ -11,6 +11,7 @@ import java.time.LocalDateTime;
 @Data
 public class MessageUpdateDTO {
     private Integer messageId;
+    private Integer chatId;
     private String newContent;
     private String updateType;
     private LocalDateTime timestamp;

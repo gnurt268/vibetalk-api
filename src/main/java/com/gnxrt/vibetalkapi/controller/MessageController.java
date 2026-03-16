@@ -117,7 +117,8 @@ public class MessageController {
                 request.getChatId(),
                 request.getMessageType() != null ? request.getMessageType() : MessageType.TEXT,
                 jwt,
-                request.getClientMessageId()
+                request.getClientMessageId(),
+                request.getReplyToId()
         );
 
         return new ResponseEntity<>(message, HttpStatus.CREATED);

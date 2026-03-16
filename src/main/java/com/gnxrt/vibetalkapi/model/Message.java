@@ -53,6 +53,11 @@ public class Message {
     @Column(name = "client_message_id", length = 64)
     private String clientMessageId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "reply_to_id")
+    @JsonIgnoreProperties({"readStatuses", "chat", "replyTo"})
+    private Message replyTo;
+
     @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
     private List<MessageReadStatus> readStatuses = new ArrayList<>();

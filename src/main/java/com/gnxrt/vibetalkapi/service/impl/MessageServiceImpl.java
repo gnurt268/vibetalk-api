@@ -4,6 +4,7 @@ import com.gnxrt.vibetalkapi.exception.ChatException;
 import com.gnxrt.vibetalkapi.exception.MessageException;
 import com.gnxrt.vibetalkapi.exception.UserException;
 import com.gnxrt.vibetalkapi.model.Chat;
+import com.gnxrt.vibetalkapi.model.DeletedMessage;
 import com.gnxrt.vibetalkapi.model.Message;
 import com.gnxrt.vibetalkapi.model.MessageReadStatus;
 import com.gnxrt.vibetalkapi.model.MessageType;
@@ -11,6 +12,7 @@ import com.gnxrt.vibetalkapi.model.User;
 import com.gnxrt.vibetalkapi.repository.ChatRepository;
 import com.gnxrt.vibetalkapi.repository.MessageRepository;
 import com.gnxrt.vibetalkapi.repository.MessageReadStatusRepository;
+import com.gnxrt.vibetalkapi.repository.NotificationRepository;
 import com.gnxrt.vibetalkapi.service.ChatService;
 import com.gnxrt.vibetalkapi.service.MessageService;
 import com.gnxrt.vibetalkapi.service.RealtimeIntegrationService;
@@ -39,6 +41,8 @@ public class MessageServiceImpl implements MessageService {
     private final RealtimeIntegrationService realtimeService;
     private final ChatRepository chatRepository;
     private final CacheService cacheService;
+    private final NotificationRepository notificationRepository;
+    private final com.gnxrt.vibetalkapi.repository.DeletedMessageRepository deletedMessageRepository;
 
     public MessageServiceImpl(MessageRepository messageRepository,
                               MessageReadStatusRepository messageReadStatusRepository,
@@ -46,7 +50,9 @@ public class MessageServiceImpl implements MessageService {
                               ChatService chatService,
                               RealtimeIntegrationService realtimeService,
                               ChatRepository chatRepository,
-                              CacheService cacheService) {
+                              CacheService cacheService,
+                              NotificationRepository notificationRepository,
+                              com.gnxrt.vibetalkapi.repository.DeletedMessageRepository deletedMessageRepository) {
         this.messageRepository = messageRepository;
         this.messageReadStatusRepository = messageReadStatusRepository;
         this.userService = userService;
@@ -54,15 +60,22 @@ public class MessageServiceImpl implements MessageService {
         this.realtimeService = realtimeService;
         this.chatRepository = chatRepository;
         this.cacheService = cacheService;
+        this.notificationRepository = notificationRepository;
+        this.deletedMessageRepository = deletedMessageRepository;
     }
 
     @Override
     public Message sendMessage(String content, Integer chatId, MessageType messageType, String jwt) throws UserException, ChatException {
-        return sendMessage(content, chatId, messageType, jwt, null);
+        return sendMessage(content, chatId, messageType, jwt, null, null);
     }
 
     @Override
     public Message sendMessage(String content, Integer chatId, MessageType messageType, String jwt, String clientMessageId) throws UserException, ChatException {
+        return sendMessage(content, chatId, messageType, jwt, clientMessageId, null);
+    }
+
+    @Override
+    public Message sendMessage(String content, Integer chatId, MessageType messageType, String jwt, String clientMessageId, Integer replyToId) throws UserException, ChatException {
         User sender = userService.findUserProfile(jwt);
         Chat chat = chatService.findChatById(chatId);
 
@@ -80,6 +93,14 @@ public class MessageServiceImpl implements MessageService {
         message.setChat(chat);
         message.setMessageType(messageType);
         message.setClientMessageId(clientMessageId);
+
+        // Set reply-to
+        if (replyToId != null) {
+            Message replyTo = messageRepository.findById(replyToId).orElse(null);
+            if (replyTo != null && replyTo.getChat().getId().equals(chatId)) {
+                message.setReplyTo(replyTo);
+            }
+        }
 
         Message savedMessage = messageRepository.save(message);
 
@@ -128,11 +149,20 @@ public class MessageServiceImpl implements MessageService {
             throw new ChatException("You don't have access to this chat");
         }
 
+        User currentUser = userService.findUserProfile(jwt);
         Chat chat = chatService.findChatById(chatId);
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
 
         List<Message> messages = new java.util.ArrayList<>(messageRepository.findByChat(chat, pageable).getContent());
         java.util.Collections.reverse(messages);
+
+        // Filter out messages deleted for this user
+        java.util.Set<Integer> deletedIds = deletedMessageRepository.findDeletedMessageIdsByUserAndChat(currentUser, chatId);
+        if (!deletedIds.isEmpty()) {
+            messages = messages.stream()
+                    .filter(m -> !deletedIds.contains(m.getId()))
+                    .collect(java.util.stream.Collectors.toList());
+        }
 
         if (page == 0) {
             cacheService.cacheChatMessages(chatId, messages);
@@ -170,10 +200,14 @@ public class MessageServiceImpl implements MessageService {
             throw new MessageException("Only text messages can be edited");
         }
 
+        // Eagerly load chat with members for broadcast
+        Chat chat = chatService.findChatById(message.getChat().getId());
+
         message.setContent(newContent.trim());
+        message.setChat(chat);
         Message updatedMessage = messageRepository.save(message);
 
-        cacheService.clearChatMessagesCache(message.getChat().getId());
+        cacheService.clearChatMessagesCache(chat.getId());
 
         if (realtimeService != null) {
             realtimeService.broadcastMessageEdit(updatedMessage);
@@ -190,8 +224,13 @@ public class MessageServiceImpl implements MessageService {
             throw new MessageException("You don't have permission to delete this message");
         }
 
-        Chat chat = message.getChat();
+        // Eagerly load chat with members before deleting
+        Chat chat = chatService.findChatById(message.getChat().getId());
         User deletedBy = userService.findUserProfile(jwt);
+
+        // Clear FK dependencies before deleting
+        notificationRepository.deleteByMessageId(messageId);
+        messageRepository.clearReplyToByMessageId(messageId);
 
         messageRepository.delete(message);
 
@@ -200,22 +239,23 @@ public class MessageServiceImpl implements MessageService {
         }
 
         cacheService.clearChatMessagesCache(chat.getId());
-        message.getChat().getMembers().forEach(member ->
+        chat.getMembers().forEach(member ->
                 cacheService.clearUserChatsCache(member.getId())
         );
     }
 
     @Override
     public void deleteMessageForMe(Integer messageId, String jwt) throws UserException, MessageException, ChatException {
+        User currentUser = userService.findUserProfile(jwt);
         Message message = getMessageById(messageId, jwt);
 
-        message.setContent("[Message deleted]");
-        message.setMessageType(MessageType.SYSTEM);
-        messageRepository.save(message);
+        // Chỉ thêm record vào deleted_messages, không sửa message gốc
+        if (!deletedMessageRepository.existsByUserAndMessage(currentUser, message)) {
+            DeletedMessage deletedMessage = new DeletedMessage(currentUser, message);
+            deletedMessageRepository.save(deletedMessage);
+        }
 
-        User currentUser = userService.findUserProfile(jwt);
-
-        log.info("Message {} deleted for user {}", messageId, currentUser.getId());
+        log.info("Message {} hidden for user {}", messageId, currentUser.getId());
     }
 
     @Override

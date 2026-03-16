@@ -33,6 +33,19 @@ public class RealtimeIntegrationService {
         realtimeMessage.setStatus("DELIVERED");
         realtimeMessage.setClientMessageId(message.getClientMessageId());
 
+        // Reply info
+        if (message.getReplyTo() != null) {
+            Message replyTo = message.getReplyTo();
+            realtimeMessage.setReplyToId(replyTo.getId());
+            realtimeMessage.setReplyToContent(replyTo.getContent());
+            realtimeMessage.setReplyToSenderName(
+                    replyTo.getSender().getFullName() != null
+                            ? replyTo.getSender().getFullName()
+                            : replyTo.getSender().getUsername()
+            );
+            realtimeMessage.setReplyToMessageType(replyTo.getMessageType().name());
+        }
+
         for (User member : chat.getMembers()) {
             messagingTemplate.convertAndSend(
                     "/topic/user/" + member.getId() + "/messages",
@@ -59,15 +72,15 @@ public class RealtimeIntegrationService {
     public void broadcastMessageEdit(Message message) {
         MessageUpdateDTO update = new MessageUpdateDTO(
                 message.getId(),
+                message.getChat().getId(),
                 message.getContent(),
                 "EDITED",
                 LocalDateTime.now()
         );
 
         for (User member : message.getChat().getMembers()) {
-            messagingTemplate.convertAndSendToUser(
-                    member.getId().toString(),
-                    "/queue/message-updates",
+            messagingTemplate.convertAndSend(
+                    "/topic/user/" + member.getId() + "/message-updates",
                     update
             );
         }
@@ -76,15 +89,15 @@ public class RealtimeIntegrationService {
     public void broadcastMessageDelete(Integer messageId, Chat chat, User deletedBy) {
         MessageUpdateDTO update = new MessageUpdateDTO(
                 messageId,
+                chat.getId(),
                 null,
                 "DELETED",
                 LocalDateTime.now()
         );
 
         for (User member : chat.getMembers()) {
-            messagingTemplate.convertAndSendToUser(
-                    member.getId().toString(),
-                    "/queue/message-updates",
+            messagingTemplate.convertAndSend(
+                    "/topic/user/" + member.getId() + "/message-updates",
                     update
             );
         }

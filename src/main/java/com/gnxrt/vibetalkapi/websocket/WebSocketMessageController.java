@@ -81,7 +81,8 @@ public class WebSocketMessageController {
                     messageDTO.getMessageType() != null ?
                             messageDTO.getMessageType() : MessageType.TEXT,
                     "Bearer " + messageDTO.getToken(),
-                    messageDTO.getClientMessageId()
+                    messageDTO.getClientMessageId(),
+                    messageDTO.getReplyToId()
             );
 
             notificationService.notifyNewMessage(message);

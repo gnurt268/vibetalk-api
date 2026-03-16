@@ -6,6 +6,7 @@ import com.gnxrt.vibetalkapi.model.User;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -61,4 +62,8 @@ public interface MessageRepository extends JpaRepository<Message, Integer> {
 
     @Query("SELECT m FROM Message m WHERE m.chat = :chat AND m.sender = :user ORDER BY m.createdAt DESC")
     List<Message> findByChatAndSender(@Param("chat") Chat chat, @Param("user") User user);
+
+    @Modifying
+    @Query("UPDATE Message m SET m.replyTo = null WHERE m.replyTo.id = :messageId")
+    void clearReplyToByMessageId(@Param("messageId") Integer messageId);
 }
