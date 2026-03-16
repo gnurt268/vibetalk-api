@@ -5,6 +5,7 @@ import com.gnxrt.vibetalkapi.model.PasswordResetToken;
 import com.gnxrt.vibetalkapi.model.User;
 import com.gnxrt.vibetalkapi.repository.PasswordResetTokenRepository;
 import com.gnxrt.vibetalkapi.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.Optional;
 
+@Slf4j
 @Service
 @Transactional
 public class PasswordResetService {
@@ -100,7 +102,7 @@ public class PasswordResetService {
         try {
             emailService.sendPasswordResetEmail(email, username, token);
         } catch (Exception e) {
-            System.err.println("Failed to send password reset email to: " + email + ". Error: " + e.getMessage());
+            log.error("Failed to send password reset email to {}", email, e);
         }
     }
 
@@ -109,8 +111,7 @@ public class PasswordResetService {
         try {
             emailService.sendPasswordResetConfirmationEmail(email, username);
         } catch (Exception e) {
-            System.err.println("Failed to send password reset confirmation email to: " + email + ". Error: " + e.getMessage());
-        }
+            log.error("Failed to send password reset confirmation email to {}", email, e);        }
     }
 
     @Scheduled(fixedRate = 3600000)

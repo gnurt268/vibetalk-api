@@ -7,6 +7,7 @@ import com.gnxrt.vibetalkapi.service.MessageService;
 import com.gnxrt.vibetalkapi.service.ChatService;
 import com.gnxrt.vibetalkapi.service.NotificationService;
 import com.gnxrt.vibetalkapi.service.UserPresenceService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.messaging.handler.annotation.Payload;
 import org.springframework.messaging.simp.SimpMessageSendingOperations;
@@ -16,6 +17,7 @@ import org.springframework.stereotype.Controller;
 import java.security.Principal;
 import java.time.LocalDateTime;
 
+@Slf4j
 @Controller
 public class WebSocketMessageController {
 
@@ -96,9 +98,9 @@ public class WebSocketMessageController {
 
             Chat chat = message.getChat();
 
-            System.out.println("[WS-DEBUG] Chat members count: " + (chat.getMembers() != null ? chat.getMembers().size() : "null"));
+            log.debug("[WS-DEBUG] Chat members count: {}", chat.getMembers() != null ? chat.getMembers().size() : "null");
             for (User member : chat.getMembers()) {
-                System.out.println("[WS-DEBUG] Sending to user topic: userId=" + member.getId() + " (" + member.getUsername() + ")");
+                log.debug("[WS-DEBUG] Sending to user topic: userId={} ({})", member.getId(), member.getUsername());
                 messagingTemplate.convertAndSend(
                         "/topic/user/" + member.getId() + "/messages",
                         realtimeMessage
@@ -115,8 +117,7 @@ public class WebSocketMessageController {
             ));
 
         } catch (Exception e) {
-            System.err.println("Error in sendMessage: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Error in sendMessage", e);
             if (principal != null) {
                 messagingTemplate.convertAndSend(
                         "/topic/user/" + principal.getName() + "/errors",
@@ -148,7 +149,7 @@ public class WebSocketMessageController {
             );
 
         } catch (Exception e) {
-            System.err.println("Error in markMessageAsRead: " + e.getMessage());
+            log.error("Error in markMessageAsRead", e);
             throw new Exception(e);
         }
     }
@@ -176,7 +177,7 @@ public class WebSocketMessageController {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Error in handleTypingStart: " + e.getMessage());
+            log.error("Error in handleTypingStart", e);
             throw new Exception(e);
         }
     }
@@ -204,7 +205,7 @@ public class WebSocketMessageController {
                 }
             }
         } catch (Exception e) {
-            System.err.println("Error in handleTypingStop: " + e.getMessage());
+            log.error("Error in handleTypingStop", e);
             throw new Exception(e);
         }
     }
@@ -227,7 +228,7 @@ public class WebSocketMessageController {
 
             messagingTemplate.convertAndSend("/topic/presence", update);
         } catch (Exception e) {
-            System.err.println("Error in updatePresence: " + e.getMessage());
+            log.error("Error in updatePresence: " + e.getMessage());
             e.printStackTrace();
         }
     }

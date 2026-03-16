@@ -97,7 +97,7 @@ public class UserServiceImpl implements UserService {
                         cloudinaryService.deleteImage(publicId);
                     }
                 } catch (IOException e) {
-                    System.err.println("Failed to delete old avatar: " + e.getMessage());
+                    log.error("Failed to delete old avatar", e);
                 }
             }
             user.setUrlAvatar(req.getUrlAvatar());
@@ -130,7 +130,7 @@ public class UserServiceImpl implements UserService {
         try {
             emailService.sendPasswordResetConfirmationEmail(user.getEmail(), user.getUsername());
         } catch (Exception e) {
-            System.err.println("Failed to send password change confirmation email: " + e.getMessage());
+            log.error("Failed to send password change confirmation email", e);
         }
 
         cacheService.cacheUserProfile(userId, updatedUser);

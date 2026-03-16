@@ -3,6 +3,7 @@ package com.gnxrt.vibetalkapi.websocket;
 import com.gnxrt.vibetalkapi.config.TokenProvider;
 import com.gnxrt.vibetalkapi.model.User;
 import com.gnxrt.vibetalkapi.repository.UserRepository;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.messaging.Message;
@@ -18,6 +19,7 @@ import org.springframework.web.socket.server.HandshakeInterceptor;
 
 import java.util.Map;
 
+@Slf4j
 @Component
 public class WebSocketAuthInterceptor implements HandshakeInterceptor, ChannelInterceptor {
 
@@ -61,7 +63,6 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor, ChannelIn
 
         if (StompCommand.CONNECT.equals(accessor.getCommand())) {
 
-            // Cách 1: Lấy từ Authorization header
             String token = accessor.getFirstNativeHeader("Authorization");
             if (token != null && token.startsWith("Bearer ")) {
                 token = token.substring(7);
@@ -76,25 +77,24 @@ public class WebSocketAuthInterceptor implements HandshakeInterceptor, ChannelIn
                                 new UsernamePasswordAuthenticationToken(user.getId().toString(), null, null);
                         accessor.setUser(authentication);
                         accessor.getSessionAttributes().put("user", user);
-                        System.out.println("[WS-AUTH] Set principal via Auth header: userId=" + user.getId() + " (" + user.getUsername() + ")");
+                        log.debug("[WS-AUTH] Set principal via Auth header: userId={} ({})", user.getId(), user.getUsername());
                         return message;
                     }
                 }
             }
 
-            // Cách 2: Fallback từ session attributes (set bởi beforeHandshake qua query param)
             if (accessor.getUser() == null && accessor.getSessionAttributes() != null) {
                 User user = (User) accessor.getSessionAttributes().get("user");
                 if (user != null) {
                     UsernamePasswordAuthenticationToken authentication =
                             new UsernamePasswordAuthenticationToken(user.getId().toString(), null, null);
                     accessor.setUser(authentication);
-                    System.out.println("[WS-AUTH] Set principal via session fallback: userId=" + user.getId() + " (" + user.getUsername() + ")");
+                    log.debug("[WS-AUTH] Set principal via session fallback: userId={} ({})", user.getId(), user.getUsername());
                 } else {
-                    System.out.println("[WS-AUTH] WARNING: No user in session attributes!");
+                    log.debug("[WS-AUTH] WARNING: No user in session attributes!");
                 }
             } else if (accessor.getUser() == null) {
-                System.out.println("[WS-AUTH] WARNING: No session attributes available!");
+                log.debug("[WS-AUTH] WARNING: No session attributes available!");
             }
         }
 
