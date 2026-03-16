@@ -12,5 +12,6 @@ public class ChatMessageDTO {
     private Integer chatId;
     private MessageType messageType;
     private String token;
+    private String clientMessageId;
 
 }

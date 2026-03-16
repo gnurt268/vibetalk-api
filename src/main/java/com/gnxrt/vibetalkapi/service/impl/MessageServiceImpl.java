@@ -58,6 +58,11 @@ public class MessageServiceImpl implements MessageService {
 
     @Override
     public Message sendMessage(String content, Integer chatId, MessageType messageType, String jwt) throws UserException, ChatException {
+        return sendMessage(content, chatId, messageType, jwt, null);
+    }
+
+    @Override
+    public Message sendMessage(String content, Integer chatId, MessageType messageType, String jwt, String clientMessageId) throws UserException, ChatException {
         User sender = userService.findUserProfile(jwt);
         Chat chat = chatService.findChatById(chatId);
 
@@ -74,6 +79,7 @@ public class MessageServiceImpl implements MessageService {
         message.setSender(sender);
         message.setChat(chat);
         message.setMessageType(messageType);
+        message.setClientMessageId(clientMessageId);
 
         Message savedMessage = messageRepository.save(message);
 

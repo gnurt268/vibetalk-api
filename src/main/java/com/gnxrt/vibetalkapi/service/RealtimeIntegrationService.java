@@ -20,18 +20,18 @@ public class RealtimeIntegrationService {
         Chat chat = message.getChat();
         User sender = message.getSender();
 
-        RealtimeMessageDTO realtimeMessage = new RealtimeMessageDTO(
-                message.getId(),
-                message.getContent(),
-                sender.getId(),
-                sender.getUsername(),
-                sender.getFullName(),
-                sender.getUrlAvatar(),
-                chat.getId(),
-                message.getMessageType(),
-                message.getCreatedAt(),
-                "DELIVERED"
-        );
+        RealtimeMessageDTO realtimeMessage = new RealtimeMessageDTO();
+        realtimeMessage.setId(message.getId());
+        realtimeMessage.setContent(message.getContent());
+        realtimeMessage.setSenderId(sender.getId());
+        realtimeMessage.setSenderUsername(sender.getUsername());
+        realtimeMessage.setSenderFullName(sender.getFullName());
+        realtimeMessage.setSenderAvatar(sender.getUrlAvatar());
+        realtimeMessage.setChatId(chat.getId());
+        realtimeMessage.setMessageType(message.getMessageType());
+        realtimeMessage.setTimestamp(message.getCreatedAt());
+        realtimeMessage.setStatus("DELIVERED");
+        realtimeMessage.setClientMessageId(message.getClientMessageId());
 
         for (User member : chat.getMembers()) {
             messagingTemplate.convertAndSend(

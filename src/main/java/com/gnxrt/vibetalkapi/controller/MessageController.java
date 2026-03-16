@@ -53,7 +53,8 @@ public class MessageController {
             @RequestHeader(JWT_HEADER) String jwt,
             @RequestParam("file") MultipartFile file,
             @RequestParam("chatId") Integer chatId,
-            @RequestParam(value = "caption", required = false) String caption) throws UserException, ChatException, IOException {
+            @RequestParam(value = "caption", required = false) String caption,
+            @RequestParam(value = "clientMessageId", required = false) String clientMessageId) throws UserException, ChatException, IOException {
 
         if (file.isEmpty()) {
             return ResponseEntity.badRequest().body(new ApiResponse("File is empty", false));
@@ -82,7 +83,7 @@ public class MessageController {
             messageType = MessageType.FILE;
         }
 
-        // Build content: URL + metadata as JSON
+        // Build content: URL + metadata
         String fileUrl = uploadResult.get("url");
         String fileName = uploadResult.get("fileName");
         String fileSize = uploadResult.get("fileSize");
@@ -99,7 +100,8 @@ public class MessageController {
                 contentBuilder.toString(),
                 chatId,
                 messageType,
-                jwt
+                jwt,
+                clientMessageId
         );
 
         return new ResponseEntity<>(message, HttpStatus.CREATED);
@@ -114,7 +116,8 @@ public class MessageController {
                 request.getContent(),
                 request.getChatId(),
                 request.getMessageType() != null ? request.getMessageType() : MessageType.TEXT,
-                jwt
+                jwt,
+                request.getClientMessageId()
         );
 
         return new ResponseEntity<>(message, HttpStatus.CREATED);

@@ -12,6 +12,8 @@ public interface MessageService {
 
     public Message sendMessage(String content, Integer chatId, MessageType messageType, String jwt) throws UserException, ChatException;
 
+    public Message sendMessage(String content, Integer chatId, MessageType messageType, String jwt, String clientMessageId) throws UserException, ChatException;
+
     public List<Message> getChatMessages(Integer chatId, String jwt) throws UserException, ChatException;
 
     public List<Message> getChatMessages(Integer chatId, int page, int size, String jwt) throws UserException, ChatException;

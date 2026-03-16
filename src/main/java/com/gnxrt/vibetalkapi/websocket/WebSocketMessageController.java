@@ -80,37 +80,14 @@ public class WebSocketMessageController {
                     messageDTO.getChatId(),
                     messageDTO.getMessageType() != null ?
                             messageDTO.getMessageType() : MessageType.TEXT,
-                    "Bearer " + messageDTO.getToken()
+                    "Bearer " + messageDTO.getToken(),
+                    messageDTO.getClientMessageId()
             );
-
-            RealtimeMessageDTO realtimeMessage = new RealtimeMessageDTO(
-                    message.getId(),
-                    message.getContent(),
-                    sender.getId(),
-                    sender.getUsername(),
-                    sender.getFullName(),
-                    sender.getUrlAvatar(),
-                    message.getChat().getId(),
-                    message.getMessageType(),
-                    message.getCreatedAt(),
-                    "SENT"
-            );
-
-            Chat chat = message.getChat();
-
-            log.debug("[WS-DEBUG] Chat members count: {}", chat.getMembers() != null ? chat.getMembers().size() : "null");
-            for (User member : chat.getMembers()) {
-                log.debug("[WS-DEBUG] Sending to user topic: userId={} ({})", member.getId(), member.getUsername());
-                messagingTemplate.convertAndSend(
-                        "/topic/user/" + member.getId() + "/messages",
-                        realtimeMessage
-                );
-            }
 
             notificationService.notifyNewMessage(message);
 
             messagingTemplate.convertAndSend("/topic/chats.update", new ChatUpdateDTO(
-                    chat.getId(),
+                    message.getChat().getId(),
                     "MESSAGE_SENT",
                     sender.getId(),
                     LocalDateTime.now()
@@ -228,8 +205,7 @@ public class WebSocketMessageController {
 
             messagingTemplate.convertAndSend("/topic/presence", update);
         } catch (Exception e) {
-            log.error("Error in updatePresence: " + e.getMessage());
-            e.printStackTrace();
+            log.error("Error in updatePresence", e);
         }
     }
 

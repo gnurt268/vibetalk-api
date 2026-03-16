@@ -50,6 +50,9 @@ public class Message {
     @Column(name = "message_type")
     private MessageType messageType = MessageType.TEXT;
 
+    @Column(name = "client_message_id", length = 64)
+    private String clientMessageId;
+
     @OneToMany(mappedBy = "message", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @JsonIgnore
     private List<MessageReadStatus> readStatuses = new ArrayList<>();

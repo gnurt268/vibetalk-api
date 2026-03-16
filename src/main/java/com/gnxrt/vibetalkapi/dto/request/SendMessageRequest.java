@@ -19,4 +19,6 @@ public class SendMessageRequest {
     private Integer chatId;
 
     private MessageType messageType = MessageType.TEXT;
+
+    private String clientMessageId;
 }

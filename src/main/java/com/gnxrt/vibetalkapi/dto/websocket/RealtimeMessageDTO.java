@@ -21,4 +21,5 @@ public class RealtimeMessageDTO {
     private MessageType messageType;
     private LocalDateTime timestamp;
     private String status;
+    private String clientMessageId;
 }
