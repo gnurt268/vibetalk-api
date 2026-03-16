@@ -5,6 +5,7 @@ import com.gnxrt.vibetalkapi.model.User;
 import com.gnxrt.vibetalkapi.dto.request.UpdateUserRequest;
 import com.gnxrt.vibetalkapi.dto.request.ChangePasswordRequest;
 import com.gnxrt.vibetalkapi.dto.response.ApiResponse;
+import com.gnxrt.vibetalkapi.repository.UserRepository;
 import com.gnxrt.vibetalkapi.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -25,9 +26,12 @@ import static com.gnxrt.vibetalkapi.config.JwtConstant.JWT_HEADER;
 public class UserController {
 
     private final UserService userService;
+    private final UserRepository userRepository;
 
-    public UserController(UserService userService) {
+    public UserController(UserService userService,
+                          com.gnxrt.vibetalkapi.repository.UserRepository userRepository) {
         this.userService = userService;
+        this.userRepository = userRepository;
     }
 
     @GetMapping("/profile")
@@ -129,6 +133,43 @@ public class UserController {
         try {
             User user = userService.findUserById(userId);
             return new ResponseEntity<>(user, HttpStatus.OK);
+        } catch (UserException e) {
+            return new ResponseEntity<>(HttpStatus.NOT_FOUND);
+        }
+    }
+
+    /**
+     * Lưu public key E2EE của user
+     */
+    @PutMapping("/public-key")
+    public ResponseEntity<ApiResponse> updatePublicKey(
+            @RequestHeader(JWT_HEADER) String token,
+            @RequestBody Map<String, String> request) throws UserException {
+
+        User user = userService.findUserProfile(token);
+        String publicKey = request.get("publicKey");
+
+        if (publicKey == null || publicKey.trim().isEmpty()) {
+            return ResponseEntity.badRequest().body(new ApiResponse("Public key is required", false));
+        }
+
+        user.setPublicKey(publicKey.trim());
+        userRepository.save(user);
+
+        return ResponseEntity.ok(new ApiResponse("Public key updated", true));
+    }
+
+    /**
+     * Lấy public key của user
+     */
+    @GetMapping("/{userId}/public-key")
+    public ResponseEntity<Map<String, String>> getPublicKey(@PathVariable Integer userId) {
+        try {
+            User user = userService.findUserById(userId);
+            Map<String, String> response = new HashMap<>();
+            response.put("publicKey", user.getPublicKey());
+            response.put("userId", userId.toString());
+            return ResponseEntity.ok(response);
         } catch (UserException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }

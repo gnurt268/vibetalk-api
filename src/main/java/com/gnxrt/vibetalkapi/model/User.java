@@ -36,4 +36,7 @@ public class User {
     @JsonIgnore
     private String password;
 
+    @Column(name = "public_key", columnDefinition = "TEXT")
+    private String publicKey;
+
 }
