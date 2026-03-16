@@ -34,9 +34,8 @@ public class RealtimeIntegrationService {
         );
 
         for (User member : chat.getMembers()) {
-            messagingTemplate.convertAndSendToUser(
-                    member.getId().toString(),
-                    "/queue/messages",
+            messagingTemplate.convertAndSend(
+                    "/topic/user/" + member.getId() + "/messages",
                     realtimeMessage
             );
         }

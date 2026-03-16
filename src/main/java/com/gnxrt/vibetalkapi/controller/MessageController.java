@@ -7,14 +7,20 @@ import com.gnxrt.vibetalkapi.model.Message;
 import com.gnxrt.vibetalkapi.model.MessageType;
 import com.gnxrt.vibetalkapi.dto.request.SendMessageRequest;
 import com.gnxrt.vibetalkapi.dto.response.ApiResponse;
+import com.gnxrt.vibetalkapi.service.CloudinaryService;
 import com.gnxrt.vibetalkapi.service.MessageService;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 import static com.gnxrt.vibetalkapi.config.JwtConstant.JWT_HEADER;
 
@@ -24,9 +30,79 @@ import static com.gnxrt.vibetalkapi.config.JwtConstant.JWT_HEADER;
 public class MessageController {
 
     private final MessageService messageService;
+    private final CloudinaryService cloudinaryService;
 
-    public MessageController(MessageService messageService) {
+    private static final Set<String> IMAGE_CONTENT_TYPES = Set.of(
+            "image/jpeg", "image/png", "image/gif", "image/webp", "image/svg+xml"
+    );
+
+    private static final long MAX_IMAGE_SIZE = 10 * 1024 * 1024; // 10MB
+    private static final long MAX_FILE_SIZE = 25 * 1024 * 1024;  // 25MB
+
+    public MessageController(MessageService messageService, CloudinaryService cloudinaryService) {
         this.messageService = messageService;
+        this.cloudinaryService = cloudinaryService;
+    }
+
+    /**
+     * Upload file/ảnh và gửi message trong chat.
+     * Tự detect IMAGE vs FILE dựa trên content type.
+     */
+    @PostMapping(value = "/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadAndSendMessage(
+            @RequestHeader(JWT_HEADER) String jwt,
+            @RequestParam("file") MultipartFile file,
+            @RequestParam("chatId") Integer chatId,
+            @RequestParam(value = "caption", required = false) String caption) throws UserException, ChatException, IOException {
+
+        if (file.isEmpty()) {
+            return ResponseEntity.badRequest().body(new ApiResponse("File is empty", false));
+        }
+
+        String contentType = file.getContentType();
+        boolean isImage = contentType != null && IMAGE_CONTENT_TYPES.contains(contentType);
+
+        // Validate size
+        long maxSize = isImage ? MAX_IMAGE_SIZE : MAX_FILE_SIZE;
+        if (file.getSize() > maxSize) {
+            String maxSizeMB = String.valueOf(maxSize / (1024 * 1024));
+            return ResponseEntity.badRequest().body(
+                    new ApiResponse("File size exceeds " + maxSizeMB + "MB limit", false));
+        }
+
+        // Upload to Cloudinary
+        Map<String, String> uploadResult;
+        MessageType messageType;
+
+        if (isImage) {
+            uploadResult = cloudinaryService.uploadChatImage(file);
+            messageType = MessageType.IMAGE;
+        } else {
+            uploadResult = cloudinaryService.uploadChatFile(file);
+            messageType = MessageType.FILE;
+        }
+
+        // Build content: URL + metadata as JSON
+        String fileUrl = uploadResult.get("url");
+        String fileName = uploadResult.get("fileName");
+        String fileSize = uploadResult.get("fileSize");
+
+        // Content format: url|fileName|fileSize|caption
+        StringBuilder contentBuilder = new StringBuilder(fileUrl);
+        contentBuilder.append("|").append(fileName != null ? fileName : "file");
+        contentBuilder.append("|").append(fileSize != null ? fileSize : "0");
+        if (caption != null && !caption.trim().isEmpty()) {
+            contentBuilder.append("|").append(caption.trim());
+        }
+
+        Message message = messageService.sendMessage(
+                contentBuilder.toString(),
+                chatId,
+                messageType,
+                jwt
+        );
+
+        return new ResponseEntity<>(message, HttpStatus.CREATED);
     }
 
     @PostMapping("/send")

@@ -55,6 +55,42 @@ public class CloudinaryService {
         return (String) uploadResult.get("secure_url");
     }
 
+    /**
+     * Upload ảnh chat (không crop, giữ nguyên kích thước gốc, giới hạn max 1920px)
+     */
+    public Map<String, String> uploadChatImage(MultipartFile file) throws IOException {
+        Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(),
+                ObjectUtils.asMap(
+                        "folder", "vibetalk/chat-images",
+                        "transformation", new com.cloudinary.Transformation()
+                                .width(1920).height(1920).crop("limit"),
+                        "resource_type", "image"
+                ));
+        Map<String, String> result = new java.util.HashMap<>();
+        result.put("url", (String) uploadResult.get("secure_url"));
+        result.put("fileName", file.getOriginalFilename());
+        result.put("fileSize", String.valueOf(file.getSize()));
+        result.put("fileType", file.getContentType());
+        return result;
+    }
+
+    /**
+     * Upload file chat (PDF, DOC, ZIP, etc.) dùng resource_type=raw
+     */
+    public Map<String, String> uploadChatFile(MultipartFile file) throws IOException {
+        Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(),
+                ObjectUtils.asMap(
+                        "folder", "vibetalk/chat-files",
+                        "resource_type", "raw"
+                ));
+        Map<String, String> result = new java.util.HashMap<>();
+        result.put("url", (String) uploadResult.get("secure_url"));
+        result.put("fileName", file.getOriginalFilename());
+        result.put("fileSize", String.valueOf(file.getSize()));
+        result.put("fileType", file.getContentType());
+        return result;
+    }
+
     public void deleteImage(String publicId) throws IOException {
         cloudinary.uploader().destroy(publicId, ObjectUtils.emptyMap());
     }
