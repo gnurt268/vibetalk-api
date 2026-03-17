@@ -19,7 +19,6 @@ target/
 .env.production
 *.env
 application-local.yml
-application-production.yml
 
 ### IntelliJ IDEA ###
 .idea
