@@ -33,4 +33,12 @@ public interface MessageReadStatusRepository extends JpaRepository<MessageReadSt
 
     @Query("SELECT mrs.user FROM MessageReadStatus mrs WHERE mrs.message = :message")
     List<User> findUsersWhoReadMessage(@Param("message") Message message);
+
+    @Modifying
+    @Query("DELETE FROM MessageReadStatus mrs WHERE mrs.message.id = :messageId")
+    void deleteByMessageId(@Param("messageId") Integer messageId);
+
+    @Modifying
+    @Query("DELETE FROM MessageReadStatus mrs WHERE mrs.message.chat.id = :chatId")
+    void deleteByChatId(@Param("chatId") Integer chatId);
 }

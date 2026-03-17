@@ -39,6 +39,9 @@ public class ChatServiceImpl implements ChatService {
     private final RealtimeIntegrationService realtimeService;
     private final NotificationService notificationService;
     private final CacheService cacheService;
+    private final com.gnxrt.vibetalkapi.repository.DeletedChatRepository deletedChatRepository;
+    private final com.gnxrt.vibetalkapi.repository.DeletedMessageRepository deletedMessageRepository;
+    private final com.gnxrt.vibetalkapi.repository.NotificationRepository notificationRepository;
 
     public ChatServiceImpl(ChatRepository chatRepository,
                            UserService userService,
@@ -46,13 +49,19 @@ public class ChatServiceImpl implements ChatService {
                            MessageReadStatusRepository messageReadStatusRepository,
                            RealtimeIntegrationService realtimeService,
                            NotificationService notificationService,
-                           CacheService cacheService) {
+                           CacheService cacheService,
+                           com.gnxrt.vibetalkapi.repository.DeletedChatRepository deletedChatRepository,
+                           com.gnxrt.vibetalkapi.repository.DeletedMessageRepository deletedMessageRepository,
+                           com.gnxrt.vibetalkapi.repository.NotificationRepository notificationRepository) {
         this.chatRepository = chatRepository;
         this.userService = userService;
         this.messageRepository = messageRepository;
         this.messageReadStatusRepository = messageReadStatusRepository;
         this.realtimeService = realtimeService;
         this.notificationService = notificationService;
+        this.deletedChatRepository = deletedChatRepository;
+        this.deletedMessageRepository = deletedMessageRepository;
+        this.notificationRepository = notificationRepository;
         this.cacheService = cacheService;
     }
 
@@ -67,6 +76,20 @@ public class ChatServiceImpl implements ChatService {
 
         Chat existingChat = chatRepository.findPrivateChatByUsers(currentUser, otherUser);
         if (existingChat != null) {
+            // If current user soft-deleted this chat, un-delete it + hide old messages
+            if (deletedChatRepository.existsByUserIdAndChatId(currentUser.getId(), existingChat.getId())) {
+                // Hide all existing messages for this user (fresh start)
+                List<Message> oldMessages = messageRepository.findByChatOrderByCreatedAtAsc(existingChat);
+                for (Message msg : oldMessages) {
+                    if (!deletedMessageRepository.existsByUserAndMessage(currentUser, msg)) {
+                        deletedMessageRepository.save(new com.gnxrt.vibetalkapi.model.DeletedMessage(currentUser, msg));
+                    }
+                }
+                // Un-delete the chat
+                deletedChatRepository.deleteByUserIdAndChatId(currentUser.getId(), existingChat.getId());
+                cacheService.clearUserChatsCache(currentUser.getId());
+                cacheService.clearChatMessagesCache(existingChat.getId());
+            }
             return existingChat;
         }
 
@@ -147,7 +170,14 @@ public class ChatServiceImpl implements ChatService {
         User currentUser = userService.findUserProfile(jwt);
         User otherUser = userService.findUserById(otherUserId);
 
-        return chatRepository.findPrivateChatByUsers(currentUser, otherUser);
+        Chat chat = chatRepository.findPrivateChatByUsers(currentUser, otherUser);
+
+        // If user soft-deleted this chat, pretend it doesn't exist → frontend will call createPrivateChat
+        if (chat != null && deletedChatRepository.existsByUserIdAndChatId(currentUser.getId(), chat.getId())) {
+            return null;
+        }
+
+        return chat;
     }
 
     @Override
@@ -481,19 +511,21 @@ public class ChatServiceImpl implements ChatService {
             if (!isGroupOwner(chatId, jwt)) {
                 throw new ChatException("Only group owner can delete group chat");
             }
+            // Clean up all FK dependencies before deleting
+            notificationRepository.deleteByChatId(chatId);
+            messageRepository.clearReplyToByChatId(chatId);
+            deletedMessageRepository.deleteByChatId(chatId);
+            messageReadStatusRepository.deleteByChatId(chatId);
+            deletedChatRepository.deleteByChatId(chatId);
             chatRepository.delete(chat);
         } else {
-            chat.getMembers().remove(currentUser);
-
-            if (chat.getMembers().isEmpty()) {
-                chatRepository.delete(chat);
-            } else {
-                chatRepository.save(chat);
+            // Private chat: soft delete — chỉ ẩn chat cho người xóa, người kia vẫn thấy
+            if (!deletedChatRepository.existsByUserIdAndChatId(currentUser.getId(), chatId)) {
+                deletedChatRepository.save(new com.gnxrt.vibetalkapi.model.DeletedChat(currentUser, chat));
             }
         }
 
-        chat.getMembers().forEach(member -> cacheService.clearUserChatsCache(member.getId()));
-        cacheService.clearChatMessagesCache(chatId);
+        cacheService.clearUserChatsCache(currentUser.getId());
     }
 
     @Override
@@ -553,8 +585,10 @@ public class ChatServiceImpl implements ChatService {
     public List<Chat> searchChats(String query, String jwt) throws UserException {
         User user = userService.findUserProfile(jwt);
         List<Chat> userChats = chatRepository.findChatsByUser(user);
+        java.util.Set<Integer> deletedChatIds = deletedChatRepository.findDeletedChatIdsByUser(user);
 
         return userChats.stream()
+                .filter(chat -> !deletedChatIds.contains(chat.getId()))
                 .filter(chat -> chat.getChatName().toLowerCase().contains(query.toLowerCase()))
                 .collect(Collectors.toList());
     }
@@ -565,15 +599,20 @@ public class ChatServiceImpl implements ChatService {
         User user = userService.findUserProfile(jwt);
         List<Chat> chats = chatRepository.findChatsByUser(user);
 
-        return chats.stream().map(chat -> {
-            Message lastMessage = messageRepository.findTopByChatOrderByCreatedAtDesc(chat);
-            int unreadCount = messageRepository.countUnreadMessagesByUserInChat(chat, user);
-            return new ChatSummaryDTO(
-                    chat,
-                    ChatSummaryDTO.fromMessage(lastMessage),
-                    unreadCount
-            );
-        }).collect(Collectors.toList());
+        // Filter out soft-deleted chats
+        java.util.Set<Integer> deletedChatIds = deletedChatRepository.findDeletedChatIdsByUser(user);
+
+        return chats.stream()
+                .filter(chat -> !deletedChatIds.contains(chat.getId()))
+                .map(chat -> {
+                    Message lastMessage = messageRepository.findTopByChatOrderByCreatedAtDesc(chat);
+                    int unreadCount = messageRepository.countUnreadMessagesByUserInChat(chat, user);
+                    return new ChatSummaryDTO(
+                            chat,
+                            ChatSummaryDTO.fromMessage(lastMessage),
+                            unreadCount
+                    );
+                }).collect(Collectors.toList());
     }
 
 }

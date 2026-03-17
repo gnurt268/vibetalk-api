@@ -66,4 +66,8 @@ public interface MessageRepository extends JpaRepository<Message, Integer> {
     @Modifying
     @Query("UPDATE Message m SET m.replyTo = null WHERE m.replyTo.id = :messageId")
     void clearReplyToByMessageId(@Param("messageId") Integer messageId);
+
+    @Modifying
+    @Query("UPDATE Message m SET m.replyTo = null WHERE m.chat.id = :chatId")
+    void clearReplyToByChatId(@Param("chatId") Integer chatId);
 }

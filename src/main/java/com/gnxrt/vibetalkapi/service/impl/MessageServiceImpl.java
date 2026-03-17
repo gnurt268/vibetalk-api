@@ -94,7 +94,6 @@ public class MessageServiceImpl implements MessageService {
         message.setMessageType(messageType);
         message.setClientMessageId(clientMessageId);
 
-        // Set reply-to
         if (replyToId != null) {
             Message replyTo = messageRepository.findById(replyToId).orElse(null);
             if (replyTo != null && replyTo.getChat().getId().equals(chatId)) {
@@ -156,7 +155,6 @@ public class MessageServiceImpl implements MessageService {
         List<Message> messages = new java.util.ArrayList<>(messageRepository.findByChat(chat, pageable).getContent());
         java.util.Collections.reverse(messages);
 
-        // Filter out messages deleted for this user
         java.util.Set<Integer> deletedIds = deletedMessageRepository.findDeletedMessageIdsByUserAndChat(currentUser, chatId);
         if (!deletedIds.isEmpty()) {
             messages = messages.stream()
@@ -200,7 +198,6 @@ public class MessageServiceImpl implements MessageService {
             throw new MessageException("Only text messages can be edited");
         }
 
-        // Eagerly load chat with members for broadcast
         Chat chat = chatService.findChatById(message.getChat().getId());
 
         message.setContent(newContent.trim());
@@ -224,13 +221,13 @@ public class MessageServiceImpl implements MessageService {
             throw new MessageException("You don't have permission to delete this message");
         }
 
-        // Eagerly load chat with members before deleting
         Chat chat = chatService.findChatById(message.getChat().getId());
         User deletedBy = userService.findUserProfile(jwt);
 
-        // Clear FK dependencies before deleting
         notificationRepository.deleteByMessageId(messageId);
         messageRepository.clearReplyToByMessageId(messageId);
+        deletedMessageRepository.deleteByMessageId(messageId);
+        messageReadStatusRepository.deleteByMessageId(messageId);
 
         messageRepository.delete(message);
 
@@ -249,7 +246,6 @@ public class MessageServiceImpl implements MessageService {
         User currentUser = userService.findUserProfile(jwt);
         Message message = getMessageById(messageId, jwt);
 
-        // Chỉ thêm record vào deleted_messages, không sửa message gốc
         if (!deletedMessageRepository.existsByUserAndMessage(currentUser, message)) {
             DeletedMessage deletedMessage = new DeletedMessage(currentUser, message);
             deletedMessageRepository.save(deletedMessage);
