@@ -3,6 +3,7 @@ package com.gnxrt.vibetalkapi.exception;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.context.request.WebRequest;
@@ -15,6 +16,18 @@ import java.util.stream.Collectors;
 
 @RestControllerAdvice
 public class GlobalException {
+
+    @ExceptionHandler(UsernameNotFoundException.class)
+    public ResponseEntity<ErrorDetail> handleUsernameNotFoundException(
+            UsernameNotFoundException e,
+            WebRequest request) {
+        ErrorDetail errorDetail = new ErrorDetail(
+                "Invalid username or password",
+                request.getDescription(false),
+                LocalDateTime.now()
+        );
+        return new ResponseEntity<>(errorDetail, HttpStatus.UNAUTHORIZED);
+    }
 
     @ExceptionHandler(UserException.class)
     public ResponseEntity<ErrorDetail> handleUserException(UserException e, WebRequest request) {
